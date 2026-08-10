@@ -72,13 +72,13 @@ async function createTransaction(req,res){
     const session = await mongoose.startSession()
     session.startTransaction()
 
-    const transaction = await transactionModel.create({
+    const transaction = (await transactionModel.create([{
         fromAccount,
         toAccount,
         amount,
         idempotencyKey,
         status:"PENDING"
-    })
+    }],{session}))[0]
 
     const debitLedgerEntry = await ledgerModel.create([{
         account:fromAccount,
@@ -86,6 +86,11 @@ async function createTransaction(req,res){
         transaction:transaction._id,
         type:"DEBIT",
     }],{session})
+
+    // await (()=>{
+    //     return new Promise((resolve)=>setTimeout(resolve,100*1000))
+    // })()
+
     const creditLedgerEntry = await ledgerModel.create([{
         account:toAccount,
         amount:amount,
