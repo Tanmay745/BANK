@@ -338,7 +338,42 @@ async function createInitialFundsTransaction(req, res) {
     }
 }
 
+async function getAccountTransactions(req,res){
+    const { accountId } = req.params
+
+    if(!mongoose.Types.ObjectId.isValid(accountId)){
+        return res.status(400).json({
+            message:"Invalid account ID"
+        })
+    }
+
+    const account = await accountModel.findOne({
+        _id:accountId,
+        user:req.user._id
+    })
+
+    if(!account){
+        return res.status(404).json({
+            message:"Account not found"
+        })
+    }
+
+    const transactions = await transactionModel.find({
+        $or:[
+            {fromAccount:accountId},
+            {toAccount:accountId}
+        ]
+    }).sort({createdAt:-1})
+
+    return res.status(200).json({
+        accountId,
+        count:transactions.length,
+        transactions
+    })
+}
+
 module.exports = {
     createTransaction,
-    createInitialFundsTransaction
+    createInitialFundsTransaction,
+    getAccountTransactions
 }
