@@ -13,8 +13,10 @@ async function createTransaction(req, res) {
         })
     }
 
-    if (!mongoose.Types.ObjectId.isValid(fromAccount) ||
-        !mongoose.Types.ObjectId.isValid(toAccount)) {
+    if (
+        !mongoose.Types.ObjectId.isValid(fromAccount) ||
+        !mongoose.Types.ObjectId.isValid(toAccount)
+    ) {
         return res.status(400).json({
             message: "Invalid account ID"
         })
@@ -26,13 +28,20 @@ async function createTransaction(req, res) {
         })
     }
 
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+    if (
+        typeof amount !== "number" ||
+        !Number.isFinite(amount) ||
+        amount <= 0
+    ) {
         return res.status(400).json({
             message: "Amount must be a valid number greater than 0"
         })
     }
 
-    if (typeof idempotencyKey !== "string" || idempotencyKey.trim().length === 0) {
+    if (
+        typeof idempotencyKey !== "string" ||
+        idempotencyKey.trim().length === 0
+    ) {
         return res.status(400).json({
             message: "Invalid idempotency key"
         })
@@ -91,8 +100,10 @@ async function createTransaction(req, res) {
         })
     }
 
-    if (fromUserAccount.status !== "ACTIVE" ||
-        toUserAccount.status !== "ACTIVE") {
+    if (
+        fromUserAccount.status !== "ACTIVE" ||
+        toUserAccount.status !== "ACTIVE"
+    ) {
         return res.status(400).json({
             message: "Both fromAccount and toAccount must be ACTIVE to process transaction"
         })
@@ -107,40 +118,67 @@ async function createTransaction(req, res) {
     }
 
     let session
+    let transaction
 
     try {
         session = await mongoose.startSession()
         session.startTransaction()
 
-        const transaction = (
-            await transactionModel.create([{
-                fromAccount,
-                toAccount,
-                amount,
-                idempotencyKey: idempotencyKey.trim(),
-                status: "PENDING"
-            }], { session })
+        transaction = (
+            await transactionModel.create(
+                [
+                    {
+                        fromAccount,
+                        toAccount,
+                        amount,
+                        idempotencyKey: idempotencyKey.trim(),
+                        status: "PENDING"
+                    }
+                ],
+                { session }
+            )
         )[0]
 
-        await ledgerModel.create([{
-            account: fromAccount,
-            amount,
-            transaction: transaction._id,
-            type: "DEBIT"
-        }], { session })
+        await ledgerModel.create(
+            [
+                {
+                    account: fromAccount,
+                    amount,
+                    transaction: transaction._id,
+                    type: "DEBIT"
+                }
+            ],
+            { session }
+        )
 
-        await ledgerModel.create([{
-            account: toAccount,
-            amount,
-            transaction: transaction._id,
-            type: "CREDIT"
-        }], { session })
+        await ledgerModel.create(
+            [
+                {
+                    account: toAccount,
+                    amount,
+                    transaction: transaction._id,
+                    type: "CREDIT"
+                }
+            ],
+            { session }
+        )
 
         transaction.status = "COMPLETED"
 
         await transaction.save({ session })
 
         await session.commitTransaction()
+
+        try {
+            await emailService.sendTransactionEmail(
+                req.user.email,
+                req.user.name,
+                amount,
+                toAccount
+            )
+        } catch (emailError) {
+            console.error("Transaction email failed:", emailError)
+        }
 
         return res.status(200).json({
             message: "Transaction completed successfully",
@@ -178,13 +216,20 @@ async function createInitialFundsTransaction(req, res) {
         })
     }
 
-    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+    if (
+        typeof amount !== "number" ||
+        !Number.isFinite(amount) ||
+        amount <= 0
+    ) {
         return res.status(400).json({
             message: "Amount must be a valid number greater than 0"
         })
     }
 
-    if (typeof idempotencyKey !== "string" || idempotencyKey.trim().length === 0) {
+    if (
+        typeof idempotencyKey !== "string" ||
+        idempotencyKey.trim().length === 0
+    ) {
         return res.status(400).json({
             message: "Invalid idempotency key"
         })
@@ -228,12 +273,13 @@ async function createInitialFundsTransaction(req, res) {
     }
 
     let session
+    let transaction
 
     try {
         session = await mongoose.startSession()
         session.startTransaction()
 
-        const transaction = new transactionModel({
+        transaction = new transactionModel({
             fromAccount: fromUserAccount._id,
             toAccount,
             amount,
@@ -241,19 +287,29 @@ async function createInitialFundsTransaction(req, res) {
             status: "PENDING"
         })
 
-        await ledgerModel.create([{
-            account: fromUserAccount._id,
-            amount,
-            transaction: transaction._id,
-            type: "DEBIT"
-        }], { session })
+        await ledgerModel.create(
+            [
+                {
+                    account: fromUserAccount._id,
+                    amount,
+                    transaction: transaction._id,
+                    type: "DEBIT"
+                }
+            ],
+            { session }
+        )
 
-        await ledgerModel.create([{
-            account: toAccount,
-            amount,
-            transaction: transaction._id,
-            type: "CREDIT"
-        }], { session })
+        await ledgerModel.create(
+            [
+                {
+                    account: toAccount,
+                    amount,
+                    transaction: transaction._id,
+                    type: "CREDIT"
+                }
+            ],
+            { session }
+        )
 
         transaction.status = "COMPLETED"
 
