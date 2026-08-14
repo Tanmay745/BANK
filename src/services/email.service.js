@@ -62,8 +62,17 @@ async function sendTransactionFailureEmail(userEmail,name,amount,toAccount){
   await sendEmail(userEmail,subject,text,html)
 }
 
+async function sendTransactionReverseEmail(userEmail,name,amount,toAccount){
+  const subject = "Transaction reversed";
+  const text = `Hello ${name},\n\nYour transaction of ${amount} to account ${toAccount} has been successfully reversed.\n\n Best regards, \nThe Backend Ledger Team`;
+  const html = `<p>Hello ${name},</p><p>Your transaction of ${amount} to account ${toAccount} has been successfully reversed.</p><p>Best regards,<br>The Backend Ledger Team</p>`;
+
+  await sendEmail(userEmail,subject,text,html)
+}
+
 module.exports = {
     sendRegistrationEmail,
     sendTransactionEmail,
-    sendTransactionFailureEmail
+    sendTransactionFailureEmail,
+    sendTransactionReverseEmail
 };

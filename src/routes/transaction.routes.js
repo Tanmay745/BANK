@@ -9,4 +9,6 @@ transactionRoutes.post("/system/initial-funds",authMiddleware.authSystemUserMidd
 
 transactionRoutes.get("/account/:accountId",authMiddleware.authMiddleware,transactionController.getAccountTransactions)
 
+transactionRoutes.post("/:transactionId/reverse",authMiddleware.authMiddleware,transactionController.reverseTransaction)
+
 module.exports = transactionRoutes
