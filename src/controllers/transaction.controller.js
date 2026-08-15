@@ -336,6 +336,8 @@ async function createInitialFundsTransaction(req, res) {
 async function getAccountTransactions(req, res) {
   const { accountId } = req.params;
 
+  const { status, type, fromDate, toDate } = req.query;
+
   if (!mongoose.Types.ObjectId.isValid(accountId)) {
     return res.status(400).json({
       message: "Invalid account ID",
@@ -353,14 +355,105 @@ async function getAccountTransactions(req, res) {
     });
   }
 
+  const Status = ["COMPLETED", "PENDING", "REVERSED", "FAILED"];
+
+  if (status && !Status.includes(status)) {
+    return res.status(400).json({
+      message: "Invalid transaction status",
+    });
+  }
+
+  if (type && type !== "CREDIT" && type !== "DEBIT") {
+    return res.status(400).json({
+      message: "Transaction type must be CREDIT or DEBIT",
+    });
+  }
+
+  const date = {};
+
+  let start = null;
+  let end = null;
+
+  const now = new Date();
+
+  if (fromDate) {
+    start = new Date(fromDate);
+
+    if (isNaN(start.getTime())) {
+      return res.status(400).json({
+        message: "Invalid fromDate",
+      });
+    }
+
+    if (start > now) {
+      return res.status(400).json({
+        message: "fromDate cannot be greater than current date",
+      });
+    }
+
+    date.$gte = start;
+  }
+
+  if (toDate) {
+    end = new Date(toDate);
+
+    if (isNaN(end.getTime())) {
+      return res.status(400).json({
+        message: "Invalid toDate",
+      });
+    }
+
+    if (end > now) {
+      return res.status(400).json({
+        message: "toDate cannot be greater than current date",
+      });
+    }
+
+    if (start && end < start) {
+      return res.status(400).json({
+        message: "toDate must be greater than or equal to fromDate",
+      });
+    }
+
+    end.setHours(23, 59, 59, 999);
+
+    date.$lte = end;
+  }
+
+  const filter = {
+    $or: [{ fromAccount: accountId }, { toAccount: accountId }],
+  };
+
+  if (status) {
+    filter.status = status;
+  }
+
+  if (type === "DEBIT") {
+    filter.fromAccount = accountId;
+    delete filter.$or;
+  }
+
+  if (type === "CREDIT") {
+    filter.toAccount = accountId;
+    delete filter.$or;
+  }
+
+  if (Object.keys(date).length > 0) {
+    filter.createdAt = date;
+  }
+
   const transactions = await transactionModel
-    .find({
-      $or: [{ fromAccount: accountId }, { toAccount: accountId }],
-    })
+    .find(filter)
     .sort({ createdAt: -1 });
 
   return res.status(200).json({
     accountId,
+    filters: {
+      status: status || null,
+      type: type || null,
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+    },
     count: transactions.length,
     transactions,
   });
