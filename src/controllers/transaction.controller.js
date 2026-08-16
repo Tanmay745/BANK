@@ -336,7 +336,7 @@ async function createInitialFundsTransaction(req, res) {
 async function getAccountTransactions(req, res) {
   const { accountId } = req.params;
 
-  const { status, type, fromDate, toDate } = req.query;
+  const { status, type, fromDate, toDate, page = 1, limit = 10 } = req.query;
 
   if (!mongoose.Types.ObjectId.isValid(accountId)) {
     return res.status(400).json({
@@ -352,6 +352,21 @@ async function getAccountTransactions(req, res) {
   if (!account) {
     return res.status(404).json({
       message: "Account not found",
+    });
+  }
+
+  const pageNumber = Number(page);
+  const limitNumber = Number(limit);
+
+  if (
+    !Number.isInteger(pageNumber) ||
+    !Number.isInteger(limitNumber) ||
+    pageNumber < 1 ||
+    limitNumber < 1 ||
+    limitNumber > 100
+  ) {
+    return res.status(400).json({
+      message: "Page must be >= 1 and limit must be between 1 and 100",
     });
   }
 
@@ -442,19 +457,30 @@ async function getAccountTransactions(req, res) {
     filter.createdAt = date;
   }
 
+  const total = await transactionModel.countDocuments(filter);
+
+  const totalPages = Math.ceil(total / limitNumber);
+
+  const skip = (pageNumber - 1) * limitNumber;
+
   const transactions = await transactionModel
     .find(filter)
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limitNumber);
 
   return res.status(200).json({
     accountId,
+    page: pageNumber,
+    limit: limitNumber,
+    total,
+    totalPages,
     filters: {
       status: status || null,
       type: type || null,
       fromDate: fromDate || null,
       toDate: toDate || null,
     },
-    count: transactions.length,
     transactions,
   });
 }
