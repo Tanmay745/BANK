@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
         default:false,
         immutable:true,
         select:false
+    },
+    transactionPin:{
+        type:String,
+        default:null
     }
 },{
     timestamps:true
