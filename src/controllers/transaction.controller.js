@@ -1,15 +1,24 @@
 const transactionModel = require("../models/transaction.model");
 const ledgerModel = require("../models/ledger.model");
 const accountModel = require("../models/account.model");
+const userModel = require("../models/user.model");
 const emailService = require("../services/email.service");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 async function createTransaction(req, res) {
-  const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
+  const { fromAccount, toAccount, amount, idempotencyKey, pin } = req.body;
 
-  if (!fromAccount || !toAccount || amount === undefined || !idempotencyKey) {
+  if (
+    !fromAccount ||
+    !toAccount ||
+    amount === undefined ||
+    !idempotencyKey ||
+    !pin
+  ) {
     return res.status(400).json({
-      message: "fromAccount, toAccount, amount and idempotencyKey are required",
+      message:
+        "fromAccount, toAccount, amount, idempotencyKey and pin are required",
     });
   }
 
@@ -77,10 +86,38 @@ async function createTransaction(req, res) {
     }
   }
 
+  if (typeof pin !== "string" || !/^\d{6}$/.test(pin)) {
+    return res.status(400).json({
+      message: "Transaction PIN must be exactly 6 digits",
+    });
+  }
+
   const fromUserAccount = await accountModel.findOne({
     _id: fromAccount,
     user: req.user._id,
   });
+
+  const user = await userModel.findById(req.user._id);
+
+  if (!user) {
+    return res.status(404).json({
+      message: "User not found",
+    });
+  }
+
+  if (!user.transactionPin) {
+    return res.status(400).json({
+      message: "Please set your transaction PIN before making a transaction",
+    });
+  }
+
+  const isPinValid = await bcrypt.compare(pin, user.transactionPin);
+
+  if (!isPinValid) {
+    return res.status(401).json({
+      message: "Incorrect transaction PIN",
+    });
+  }
 
   if (!fromUserAccount) {
     return res.status(403).json({
