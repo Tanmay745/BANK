@@ -10,4 +10,8 @@ router.get("/",authMiddleware.authMiddleware,accountController.getUserAccountsCo
 
 router.get("/balance/:accountId",authMiddleware.authMiddleware,accountController.getAccountBalanceController)
 
+router.patch("/:accountId/freeze",authMiddleware.authMiddleware,accountController.freezeAccount)
+
+router.patch("/:accountId/unfreeze",authMiddleware.authMiddleware,accountController.unfreezeAccount)
+
 module.exports = router
