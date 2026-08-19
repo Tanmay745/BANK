@@ -162,38 +162,47 @@ async function createTransaction(req, res) {
     });
   }
 
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-
-  const todayTransactions = await transactionModel.find({
-    fromAccount,
-    status: "COMPLETED",
-    createdAt: {
-      $gte: startOfDay,
-      $lte: endOfDay,
-    },
-  });
-
-  const todayTransferred = todayTransactions.reduce(
-    (total, transaction) => total + transaction.amount,
-    0,
-  );
-
-  if (todayTransferred + amount > DAILY_TRANSACTION_LIMIT) {
-    return res.status(400).json({
-      message: `Daily transaction limit exceeded. You have already transferred ${todayTransferred} today. Your daily limit is ${DAILY_TRANSACTION_LIMIT}.`,
-    });
-  }
-
   let session;
   let transaction;
 
   try {
     session = await mongoose.startSession();
     session.startTransaction();
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const result = await transactionModel.aggregate([
+      {
+        $match: {
+          fromAccount: new mongoose.Types.ObjectId(fromAccount),
+          status: "COMPLETED",
+          createdAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: {
+            $sum: "$amount",
+          },
+        },
+      },
+    ]);
+
+    const todayTransferred = result.length > 0 ? result[0].total : 0;
+
+    if (todayTransferred + amount > DAILY_TRANSACTION_LIMIT) {
+      return res.status(400).json({
+        message: `Daily transaction limit exceeded. You have already transferred ${todayTransferred} today. Your daily limit is ${DAILY_TRANSACTION_LIMIT}.`,
+      });
+    }
 
     transaction = (
       await transactionModel.create(
