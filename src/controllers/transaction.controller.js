@@ -6,6 +6,9 @@ const emailService = require("../services/email.service");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
+const MAX_TRANSACTION_AMOUNT = 5000;
+const DAILY_TRANSACTION_LIMIT = 10000;
+
 async function createTransaction(req, res) {
   const { fromAccount, toAccount, amount, idempotencyKey, pin } = req.body;
 
@@ -40,6 +43,12 @@ async function createTransaction(req, res) {
   if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
     return res.status(400).json({
       message: "Amount must be a valid number greater than 0",
+    });
+  }
+
+  if (amount > MAX_TRANSACTION_AMOUNT) {
+    return res.status(400).json({
+      message: `Maximum transaction amount is ${MAX_TRANSACTION_AMOUNT}`,
     });
   }
 
@@ -150,6 +159,32 @@ async function createTransaction(req, res) {
   if (balance < amount) {
     return res.status(400).json({
       message: `Insufficient balance. Current balance is ${balance}. Requested amount is ${amount}`,
+    });
+  }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const todayTransactions = await transactionModel.find({
+    fromAccount,
+    status: "COMPLETED",
+    createdAt: {
+      $gte: startOfDay,
+      $lte: endOfDay,
+    },
+  });
+
+  const todayTransferred = todayTransactions.reduce(
+    (total, transaction) => total + transaction.amount,
+    0,
+  );
+
+  if (todayTransferred + amount > DAILY_TRANSACTION_LIMIT) {
+    return res.status(400).json({
+      message: `Daily transaction limit exceeded. You have already transferred ${todayTransferred} today. Your daily limit is ${DAILY_TRANSACTION_LIMIT}.`,
     });
   }
 
