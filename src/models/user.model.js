@@ -31,6 +31,14 @@ const userSchema = new mongoose.Schema({
     transactionPin:{
         type:String,
         default:null
+    },
+    transactionPinAttempts:{
+        type:Number,
+        default:0
+    },
+    transactionPinLockedUntil:{
+        type:Date,
+        default:null
     }
 },{
     timestamps:true

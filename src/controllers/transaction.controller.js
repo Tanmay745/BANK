@@ -120,12 +120,61 @@ async function createTransaction(req, res) {
     });
   }
 
+  const now = new Date();
+
+  if (user.transactionPinLockedUntil && user.transactionPinLockedUntil > now) {
+    return res.status(403).json({
+      message: "Transaction PIN is temporarily locked. Please try again later.",
+      lockedUntil: user.transactionPinLockedUntil,
+    });
+  }
+
   const isPinValid = await bcrypt.compare(pin, user.transactionPin);
 
   if (!isPinValid) {
+    user.transactionPinAttempts += 1;
+
+    if (user.transactionPinAttempts >= 3) {
+      const lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.transactionPinLockedUntil = lockedUntil;
+      user.transactionPinAttempts = 0;
+
+      await user.save();
+
+      try {
+        await emailService.sendTransactionPinLockEmail(
+          user.email,
+          user.name,
+          lockedUntil,
+        );
+      } catch (emailError) {
+        console.error("Transaction PIN lock email failed:", emailError);
+      }
+
+      return res.status(403).json({
+        message:
+          "Too many incorrect PIN attempts. Transactions are locked for 15 minutes.",
+        lockedUntil,
+      });
+    }
+
+    await user.save();
+
     return res.status(401).json({
       message: "Incorrect transaction PIN",
+      attemptsRemaining: 3 - user.transactionPinAttempts,
     });
+  }
+
+  if (
+    user.transactionPinAttempts !== 0 ||
+    user.transactionPinLockedUntil !== null
+  ) {
+    user.transactionPinAttempts = 0;
+    user.transactionPinLockedUntil = null;
+
+    await user.save();
   }
 
   if (!fromUserAccount) {

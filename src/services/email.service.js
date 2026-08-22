@@ -1,5 +1,5 @@
-require('dotenv').config();
-const nodemailer = require('nodemailer');
+require("dotenv").config();
+const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -14,9 +14,9 @@ const transporter = nodemailer.createTransport({
 // Verify the connection configuration
 transporter.verify((error, success) => {
   if (error) {
-    console.error('Error connecting to email server:', error);
+    console.error("Error connecting to email server:", error);
   } else {
-    console.log('Email server is ready to send messages');
+    console.log("Email server is ready to send messages");
   }
 });
 
@@ -31,48 +31,57 @@ const sendEmail = async (to, subject, text, html) => {
       html, // html body
     });
 
-    console.log('Message sent: %s', info.messageId);
-    console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    console.log("Message sent: %s", info.messageId);
+    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error("Error sending email:", error);
   }
 };
 
-async function sendRegistrationEmail(userEmail,name){
-    const subject = 'Welcome to Backend Ledger!';
-    const text = `Hello ${name},\n\nThank you for registering at Backend Ledger. We're excited to have you on board!\n\nBest regards,\nThe Backend Ledger Team`;
-    const html = `<p>Hello ${name},</p><p> Thank you for registering at Backend Ledger. We're excited to have you on board!</p><p>Best regards,<br>The Backend Ledger Team</p>`;
+async function sendRegistrationEmail(userEmail, name) {
+  const subject = "Welcome to Backend Ledger!";
+  const text = `Hello ${name},\n\nThank you for registering at Backend Ledger. We're excited to have you on board!\n\nBest regards,\nThe Backend Ledger Team`;
+  const html = `<p>Hello ${name},</p><p> Thank you for registering at Backend Ledger. We're excited to have you on board!</p><p>Best regards,<br>The Backend Ledger Team</p>`;
 
-    await sendEmail(userEmail,subject,text,html)
+  await sendEmail(userEmail, subject, text, html);
 }
 
-async function sendTransactionEmail(userEmail,name,amount,toAccount){
+async function sendTransactionEmail(userEmail, name, amount, toAccount) {
   const subject = "Transaction successful!";
   const text = `Hello ${name},\n\nYour transaction of ${amount} to account ${toAccount} was successful.\n\n Best regards, \nThe Backend Ledger Team`;
   const html = `<p>Hello ${name},</p><p>Your transaction of ${amount} to account ${toAccount} was successful.</p><p>Best regards,<br>The Backend Ledger Team</p>`;
 
-  await sendEmail(userEmail,subject,text,html)
+  await sendEmail(userEmail, subject, text, html);
 }
 
-async function sendTransactionFailureEmail(userEmail,name,amount,toAccount){
+async function sendTransactionFailureEmail(userEmail, name, amount, toAccount) {
   const subject = "Transaction failed!";
   const text = `Hello ${name},\n\nWe regret to inform you that your transaction of ${amount} to account ${toAccount} could not be completed.\n\n Best regards, \nThe Backend Ledger Team`;
   const html = `<p>Hello ${name},</p><p>We regret to inform you that your transaction of ${amount} to account ${toAccount} could not be completed.</p><p>Best regards,<br>The Backend Ledger Team</p>`;
 
-  await sendEmail(userEmail,subject,text,html)
+  await sendEmail(userEmail, subject, text, html);
 }
 
-async function sendTransactionReverseEmail(userEmail,name,amount,toAccount){
+async function sendTransactionReverseEmail(userEmail, name, amount, toAccount) {
   const subject = "Transaction reversed";
   const text = `Hello ${name},\n\nYour transaction of ${amount} to account ${toAccount} has been successfully reversed.\n\n Best regards, \nThe Backend Ledger Team`;
   const html = `<p>Hello ${name},</p><p>Your transaction of ${amount} to account ${toAccount} has been successfully reversed.</p><p>Best regards,<br>The Backend Ledger Team</p>`;
 
-  await sendEmail(userEmail,subject,text,html)
+  await sendEmail(userEmail, subject, text, html);
+}
+
+async function sendTransactionPinLockEmail(userEmail, name, lockedUntil) {
+  const subject = "Transaction PIN temporarily locked";
+  const text = `Hello ${name},\n\nYour transaction PIN has been temporarily locked because of multiple incorrect PIN attempts.\nYour transaction PIN will be available again after: ${lockedUntil} \n\n Best regards, \nThe Backend Ledger Team`;
+  const html = `<p>Hello ${name},</p><p>Your transaction PIN has been temporarily locked because ofmultiple incorrect PIN attempts.</p><p>Your transaction PIN will be available again after:<strong>${lockedUntil}</strong></p><p>Best regards,<br>The Backend Ledger Team</p>`;
+
+  await sendEmail(userEmail, subject, text, html);
 }
 
 module.exports = {
-    sendRegistrationEmail,
-    sendTransactionEmail,
-    sendTransactionFailureEmail,
-    sendTransactionReverseEmail
+  sendRegistrationEmail,
+  sendTransactionEmail,
+  sendTransactionFailureEmail,
+  sendTransactionReverseEmail,
+  sendTransactionPinLockEmail,
 };
