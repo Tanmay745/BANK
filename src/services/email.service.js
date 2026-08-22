@@ -73,7 +73,7 @@ async function sendTransactionReverseEmail(userEmail, name, amount, toAccount) {
 async function sendTransactionPinLockEmail(userEmail, name, lockedUntil) {
   const subject = "Transaction PIN temporarily locked";
   const text = `Hello ${name},\n\nYour transaction PIN has been temporarily locked because of multiple incorrect PIN attempts.\nYour transaction PIN will be available again after: ${lockedUntil} \n\n Best regards, \nThe Backend Ledger Team`;
-  const html = `<p>Hello ${name},</p><p>Your transaction PIN has been temporarily locked because ofmultiple incorrect PIN attempts.</p><p>Your transaction PIN will be available again after:<strong>${lockedUntil}</strong></p><p>Best regards,<br>The Backend Ledger Team</p>`;
+  const html = `<p>Hello ${name},</p><p>Your transaction PIN has been temporarily locked because of multiple incorrect PIN attempts.</p><p>Your transaction PIN will be available again after: ${lockedUntil}</p><p>Best regards,<br>The Backend Ledger Team</p>`;
 
   await sendEmail(userEmail, subject, text, html);
 }
